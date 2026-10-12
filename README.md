@@ -27,6 +27,5 @@ Fill `README.md` front matter, start at status `idea`, then add a row above.
 ```
 blueprints/<slug>/   one folder per blueprint
 _template/           starting point for a new blueprint
-.github/workflows/   CI, matrix over blueprints with Terraform
 AGENTS.md            rules and conventions for AI agents
 ```

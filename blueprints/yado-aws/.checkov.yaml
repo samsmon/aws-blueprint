@@ -1,6 +1,6 @@
 # Checkov policy decisions for the prototype.
 #
-# The scan runs in CI. Anything listed under skip-check is a conscious
+# The scan runs locally. Anything listed under skip-check is a conscious
 # decision, explained here and in docs/security-scan.md, not a hidden failure.
 # Re-evaluate every entry before any real deployment.
 directory:

@@ -1,6 +1,6 @@
 # Static checks and accepted findings
 
-These run in CI (`.github/workflows/ci.yml`) and can be run locally.
+There is no CI. Run these locally.
 
 | Check | Command | Result |
 |---|---|---|

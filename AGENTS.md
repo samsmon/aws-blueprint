@@ -21,7 +21,6 @@ This repo is planning only. Nothing here is deployed. There is no AWS account be
 blueprints/<slug>/   one folder per blueprint, kebab-case slug
 _template/           copy this to start a new blueprint
 docs/                repo-level conventions (if any)
-.github/workflows/   one CI file, matrix over blueprints
 ```
 
 A blueprint folder:
@@ -34,14 +33,14 @@ docs/decisions.md    trade-offs, short ADRs
 modules/, envs/      Terraform, optional
 ```
 
-`blueprints/yado-aws` is the reference example. It is complete and has full Terraform, a local emulator, diagrams, and CI checks. It predates `_template`, so its docs have extra files.
+`blueprints/yado-aws` is the reference example. It is complete and has full Terraform, a local emulator, diagrams, and static checks. It predates `_template`, so its docs have extra files.
 
 ## Adding a blueprint
 
 1. Copy `_template/` to `blueprints/<slug>/`.
 2. Fill `README.md` front matter: title, slug, status, tags, dates.
 3. Start at status `idea`. A blueprint can be docs only.
-4. Add Terraform under `envs/` and `modules/` only when the design is concrete. CI treats any blueprint with an `envs/` folder as Terraform.
+4. Add Terraform under `envs/` and `modules/` only when the design is concrete.
 5. Add a row to the index in the root `README.md`.
 
 Status values: `idea`, `drafted`, `reviewed`.
@@ -52,11 +51,19 @@ Status values: `idea`, `drafted`, `reviewed`.
 - Diagrams: Mermaid in markdown, or generated SVG (see `blueprints/yado-aws/diagrams/`).
 - Write down trade-offs and prototype shortcuts (no NAT, single-AZ, local state) in `docs/decisions.md`. Say what production would change.
 - Keep each blueprint self-contained. Do not import modules across blueprints. Copy instead.
-- Terraform: `fmt`, `validate`, `tflint`, and Checkov must pass. Checkov skips go in the blueprint's `.checkov.yaml` with a reason per entry.
+- Terraform: `fmt`, `validate`, `tflint`, and Checkov must pass when run locally. Checkov skips go in the blueprint's `.checkov.yaml` with a reason per entry.
 
-## CI
+## Checks
 
-`.github/workflows/ci.yml` runs per changed blueprint that has `envs/`: format, init without backend, validate, tflint, Checkov. Infracost runs on pull requests when repo variable `INFRACOST_ENABLED` is `true` and secret `INFRACOST_API_KEY` is set. A change to anything under `.github/` runs all blueprints.
+There is no CI. Run the checks locally before committing a Terraform change:
+
+```bash
+cd blueprints/<slug>
+terraform fmt -check -recursive
+(cd envs/prototype && terraform init -backend=false && terraform validate)
+tflint --init && tflint --recursive
+checkov --config-file .checkov.yaml
+```
 
 ## Style
 
