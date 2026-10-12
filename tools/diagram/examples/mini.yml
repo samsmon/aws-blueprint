@@ -1,0 +1,20 @@
+title: Mini example
+source: tools/diagram/examples/mini.yml
+cell: [220, 170]
+origin: [200, 260]
+nodes:
+  user: {icon: user, label: User, at: [0, 1]}
+  cf: {icon: cloudfront, label: [CloudFront, + WAF], at: [1, 1]}
+  apigw: {icon: apigw, label: API Gateway, at: [2, 1]}
+  fn: {icon: lambda, label: [Lambda, handler], at: [3, 1]}
+  db: {icon: rds, label: [RDS, pgvector], at: [4, 1]}
+  secrets: {icon: secrets, label: Secrets Manager, at: [3, 2.3], support: true}
+edges:
+  - [user, cf]
+  - [cf, apigw]
+  - [apigw, fn]
+  - [fn, db]
+groups:
+  cloud: {title: AWS Cloud, style: cloud, members: [cf, apigw, vpc]}
+  vpc: {title: VPC, style: vpc, members: [fn, db]}
+  support: {title: Used by the function, style: dashed, members: [secrets]}

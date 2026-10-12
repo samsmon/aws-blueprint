@@ -4,3 +4,9 @@
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+
+# Diagram tool: per-device config, icon index cache, example output
+tools/diagram/config.toml
+tools/diagram/.icon-index.json
+tools/diagram/examples/*.svg
+__pycache__/

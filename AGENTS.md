@@ -21,6 +21,7 @@ This repo is planning only. Nothing here is deployed. There is no AWS account be
 blueprints/<slug>/   one folder per blueprint, kebab-case slug
 _template/           copy this to start a new blueprint
 docs/                repo-level conventions (if any)
+tools/diagram/       renders architecture diagrams from a YAML spec
 ```
 
 A blueprint folder:
@@ -64,6 +65,13 @@ terraform fmt -check -recursive
 tflint --init && tflint --recursive
 checkov --config-file .checkov.yaml
 ```
+
+## Diagrams
+
+New diagrams use `tools/diagram`: write or edit `blueprints/<slug>/diagrams/architecture.yml`, run
+`python tools/diagram/render.py render <spec>`, and commit spec and SVG together. Read
+`tools/diagram/README.md` for the spec and the house style; do not read `render.py`. Never edit an SVG by hand.
+Show the render to the owner before committing. `yado-aws` keeps its own script.
 
 ## Style
 
