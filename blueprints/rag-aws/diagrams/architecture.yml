@@ -1,0 +1,59 @@
+title: rag-kb on AWS
+source: blueprints/rag-aws/README.md
+icon_size: 64
+text_scale: 1.1
+cell: [150, 190]
+origin: [100, 340]
+nodes:
+  user: {icon: user, label: User, at: [0.0, 1.0]}
+  r53: {icon: route53, label: [Route 53, + ACM], at: [1.0, 1.0]}
+  cf: {icon: cloudfront, label: CloudFront, at: [2.0, 1.0]}
+  s3_ui: {icon: bucket, label: [S3, chat UI], at: [2.0, 2.0]}
+  apigw: {icon: apigw, label: API Gateway, at: [3.0, 1.0]}
+  fn_ingest: {icon: lambda, label: [Lambda, ingest-api], at: [4.0, 0.0], label_pos: above}
+  s3_raw: {icon: bucket, label: [S3, raw documents], at: [5.0, 0.0], label_pos: above}
+  sqs: {icon: sqs, label: [SQS, queue + DLQ], at: [6.0, 0.0], label_pos: above}
+  fn_embed: {icon: lambda, label: [Lambda, embedder], at: [7.0, 0.0], label_pos: above}
+  rds: {icon: rds, label: [RDS, pgvector], at: [8.0, 1.0], label_pos: right}
+  fn_query: {icon: lambda, label: [Lambda, query-api], at: [7.0, 2.0]}
+  textract: {icon: textract, label: Textract, at: [9.46667, 0.0], label_pos: above}
+  bedrock: {icon: bedrock, label: [Bedrock, embed + LLM], at: [9.46667, 1.0], label_pos: above}
+  waf: {icon: waf, label: WAF, at: [2.0, -0.55263], size: 48, label_pos: right, support: true}
+  kms: {icon: kms, label: KMS, at: [5.66667, 0.84211], size: 48, label_pos: left, support: true}
+  cw: {icon: cloudwatch, label: CloudWatch, at: [4.5, 1.36842], size: 48, label_pos: right, support: true}
+  sns: {icon: sns, label: SNS, at: [4.0, 0.84211], size: 48, label_pos: above, support: true}
+  secrets: {icon: secrets, label: [Secrets, Manager], at: [6.13333, 1.36842], size: 48, label_pos: above, support: true}
+captions:
+  - {text: Ingest path, at: [4.0, -0.62105]}
+  - {text: Query path, at: [4.0, 2.52632]}
+edges:
+  - [user, r53]
+  - [r53, cf]
+  - [cf, apigw]
+  - {from: cf, to: s3_ui, via: [[2.5, 1.0], [2.5, 2.0]]}
+  - {from: apigw, to: fn_ingest, via: [[3.5, 1.0], [3.5, 0.0]], step: 1}
+  - {from: fn_ingest, to: s3_raw, step: 2}
+  - {from: s3_raw, to: sqs, step: 3}
+  - {from: sqs, to: fn_embed, step: 4, step_at: 0.3}
+  - {from: fn_embed, to: textract, step: 5, step_at: 0.66}
+  - {from: fn_embed, to: bedrock, via: [[9.05333, 0.0], [9.05333, 1.0]], step: 6, step_at: 0.76}
+  - {from: fn_embed, to: rds, step: 7}
+  - {from: apigw, to: fn_query, via: [[3.5, 1.0], [3.5, 2.0]], step: 1}
+  - {from: fn_query, to: bedrock, via: [[9.46667, 2.0]], step: 2, step_at: 0.8}
+  - {from: fn_query, to: rds, via: [[8.0, 2.0]], step: 3}
+  - {from: waf, to: cf, kind: support, color: '#DD344C'}
+  - {from: cw, to: sns, via: [[4.5, 0.84211]], kind: support, color: '#E7157B'}
+  - {from: cw, to: fn_ingest, via: [[4.5, 0.34211], [3.92, 0.34211]], end_off: [-12, 0], kind: support, color: '#E7157B'}
+  - {from: cw, to: sqs, via: [[4.5, 0.34211], [5.92, 0.34211]], end_off: [-12, 0], kind: support, color: '#E7157B'}
+  - {from: cw, to: fn_embed, via: [[4.5, 0.34211], [6.92, 0.34211]], end_off: [-12, 0], kind: support, color: '#E7157B'}
+  - {from: cw, to: apigw, via: [[4.5, 0.34211], [2.92, 0.34211]], end_off: [-12, 0], kind: support, color: '#E7157B'}
+  - {from: cw, to: fn_query, via: [[4.5, 1.65789], [7.0, 1.65789]], kind: support, color: '#E7157B'}
+  - {from: cw, to: rds, via: [[4.5, 1.65789], [7.53333, 1.65789], [7.53333, 1.07368]], end_off: [0, 14], kind: support, color: '#E7157B'}
+  - {from: kms, to: s3_raw, via: [[5.66667, 0.47368], [5.08, 0.47368]], end_off: [12, 0], kind: support, color: '#DD344C'}
+  - {from: kms, to: sqs, via: [[5.66667, 0.47368], [6.08, 0.47368]], end_off: [12, 0], kind: support, color: '#DD344C'}
+  - {from: kms, to: rds, via: [[5.66667, 0.84211], [7.33333, 0.84211], [7.33333, 0.92632]], end_off: [0, -14], kind: support, color: '#DD344C'}
+  - {from: kms, to: secrets, via: [[5.66667, 1.36842]], kind: support, color: '#DD344C'}
+  - {from: secrets, to: rds, via: [[7.43333, 1.36842], [7.43333, 1.0]], kind: support, color: '#DD344C'}
+groups:
+  cloud: {title: AWS Cloud, style: cloud, members: [cf, s3_ui, apigw, fn_ingest, s3_raw, sqs, textract, bedrock, vpc, waf, kms, cw, sns, secrets]}
+  vpc: {title: "VPC, private subnets, 2 AZs", style: vpc, members: [fn_embed, rds, fn_query]}

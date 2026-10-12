@@ -26,20 +26,50 @@ INDEX_FILE = HERE / ".icon-index.json"
 
 INK, SUB, LINE = "#16191F", "#5F6B7A", "#232F3E"
 HEAD = (f'<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" '
-        f'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{LINE}"/></marker></defs>'
+        f'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{LINE}"/></marker>'
+        f'<marker id="ahc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" '
+        f'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker></defs>'
         f'<style>.lbl{{font-size:15px;fill:{INK};font-weight:600}}.sub{{font-size:13px;fill:{SUB}}}'
         f'.ttl{{font-size:17px;fill:{INK};font-weight:600}}.arr{{fill:none;stroke:{LINE};stroke-width:2}}'
         f'.h1{{font-size:26px;font-weight:700;fill:{INK}}}.h2{{font-size:14px;fill:{SUB}}}'
-        f'.cap{{font-size:13px;fill:{SUB};font-style:italic}}</style>')
+        f'.cap{{font-size:13px;fill:{SUB};font-style:italic}}.num{{font-size:13px;font-weight:700;fill:{INK}}}</style>')
+
+
+def scaled_head(scale):
+    return re.sub(r'font-size:(\d+)px', lambda m: f'font-size:{round(int(m.group(1)) * scale, 1)}px', HEAD)
 
 # class -> (font size, average glyph width as a fraction of the size)
-TEXT_METRICS = {"lbl": (15, 0.60), "sub": (13, 0.55), "ttl": (17, 0.60), "cap": (13, 0.55)}
+TEXT_METRICS = {"lbl": (15, 0.60), "sub": (13, 0.55), "ttl": (17, 0.60), "cap": (13, 0.55),
+                "h1": (26, 0.62), "h2": (14, 0.55)}
 # Minimum clear space in px per pair of kinds. Pairs not listed are not checked
 # (an arrow may cross a border, two arrows may share an elbow).
 CLEARANCE = {
     ("text", "text"): 0, ("icon", "text"): 4, ("arrow", "text"): 6, ("border", "text"): 6,
     ("icon", "icon"): 6, ("arrow", "icon"): 6, ("border", "icon"): 6,
+    ("badge", "text"): 4, ("badge", "icon"): 6, ("badge", "border"): 4, ("badge", "badge"): 6,
 }
+# Arial advance widths in em (bold for lbl/ttl/h1, regular for sub/h2/cap). Real browsers measured
+# 0.99x to 1.29x of this, so est_width() adds 10% and 4px; the overlap check must not underestimate.
+_BOLD = dict(zip("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", [
+    .556, .611, .556, .611, .556, .333, .611, .611, .278, .278, .556, .278, .889, .611, .611, .611, .611, .389,
+    .556, .333, .611, .556, .778, .556, .556, .5, .722, .722, .722, .722, .667, .611, .778, .722, .278, .556,
+    .722, .611, .833, .722, .778, .667, .778, .722, .667, .611, .722, .667, .944, .667, .667, .611]))
+_REG = dict(zip("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", [
+    .556, .556, .5, .556, .556, .278, .556, .556, .222, .222, .5, .222, .833, .556, .556, .556, .556, .333,
+    .5, .278, .556, .5, .722, .5, .5, .5, .667, .667, .722, .722, .667, .611, .778, .722, .278, .5,
+    .667, .556, .833, .722, .778, .667, .778, .722, .667, .611, .722, .667, .944, .667, .667, .611]))
+for _t in (_BOLD, _REG):
+    _t.update({c: .556 for c in "0123456789"})
+    _t.update({" ": .278, "+": .584, "-": .333, ".": .278, ",": .278, "/": .278, ":": .278})
+_BOLD_CLASSES = {"lbl", "ttl", "h1"}
+
+
+def est_width(content, cls, scale=1.0):
+    size = TEXT_METRICS[cls][0] * scale
+    table = _BOLD if cls in _BOLD_CLASSES else _REG
+    return sum(table.get(c, 0.6) for c in content) * size * 1.1 + 4
+
+
 ARROW_END_TRIM = 14   # an arrow may touch the icon it leaves from or points at
 GAP_START, GAP_END = 6, 10
 
@@ -59,8 +89,8 @@ ALIASES = {
     "apigw": "api-gateway", "kms": "key-management-service", "secrets": "secrets-manager",
     "acm": "certificate-manager", "route53": "route-53", "ecr": "elastic-container-registry",
     "iam": "identity-and-access-management", "alb": "res:application-load-balancer",
-    "igw": "res:internet-gateway", "vpce": "res:vpc-endpoints", "bucket": "res:s3-bucket",
-    "queue": "res:simple-queue-service-queue", "function": "res:lambda-function",
+    "igw": "res:internet-gateway", "vpce": "res:vpc-endpoints", "bucket": "res:simple-storage-service-bucket",
+    "queue": "res:simple-queue-service-queue", "function": "res:lambda-lambda-function",
 }
 
 
@@ -139,6 +169,7 @@ def resolve(idx, query):
 class Canvas:
     def __init__(self, idx):
         self.items, self.idx, self._uri = [], idx, {}
+        self.scale, self.icon_size = 1.0, 56
 
     def record(self, kind, x0, y0, x1, y1, name, **flags):
         self.items.append(dict(kind=kind, box=(x0, y0, x1, y1), name=name, **flags))
@@ -171,8 +202,9 @@ def find_overlaps(items):
 
 
 def text(cv, x, y, content, cls="lbl", anchor="middle", on_border=False):
-    size, f = TEXT_METRICS[cls]
-    w = len(content) * size * f
+    sc = 1.0 if cls in ("h1", "h2") else cv.scale
+    size = TEXT_METRICS[cls][0] * sc
+    w = est_width(content, cls, sc)
     x0 = {"middle": x - w / 2, "start": x, "end": x - w}[anchor]
     box = (x0, y - size * 0.8, x0 + w, y + size * 0.25)
     cv.record("text", *box, content, on_border=on_border)
@@ -203,7 +235,7 @@ def label_lines(label):
 
 
 def draw_node(cv, nid, n, cx, cy):
-    size = n.get("size", 56)
+    size = n.get("size", cv.icon_size)
     on_border = bool(n.get("border"))
     parts, boxes = [], []
     if n["icon"] == "user":
@@ -214,14 +246,16 @@ def draw_node(cv, nid, n, cx, cy):
     boxes.append(box)
     lines, pos = label_lines(n.get("label", nid)), n.get("label_pos", "below")
     half = size / 2
+    sc = cv.scale
+    step = 17 * sc
     if pos == "below":
-        x, y0, anchor, step = cx, cy + half + 22, "middle", 17
+        x, y0, anchor = cx, cy + half + 22 * sc, "middle"
     elif pos == "above":
-        x, y0, anchor, step = cx, cy - half - 12 - 17 * (len(lines) - 1), "middle", 17
+        x, y0, anchor = cx, cy - half - 12 - step * (len(lines) - 1), "middle"
     elif pos == "right":
-        x, y0, anchor, step = cx + half + 12, cy + 5 - 8.5 * (len(lines) - 1), "start", 17
+        x, y0, anchor = cx + half + 12, cy + 5 - step / 2 * (len(lines) - 1), "start"
     elif pos == "left":
-        x, y0, anchor, step = cx - half - 12, cy + 5 - 8.5 * (len(lines) - 1), "end", 17
+        x, y0, anchor = cx - half - 12, cy + 5 - step / 2 * (len(lines) - 1), "end"
     else:
         raise DiagramError(f'node "{nid}": label_pos must be below, above, right or left')
     for i, line in enumerate(lines):
@@ -255,7 +289,13 @@ def draw_group(cv, gid, g, box):
 
 def route(pts):
     """Drop repeated points, require axis-aligned segments."""
-    pts = [p for i, p in enumerate(pts) if i == 0 or p != pts[i - 1]]
+    snapped = []
+    for p in pts:  # grid rounding: points within half a pixel share an axis
+        if snapped:
+            q = snapped[-1]
+            p = (q[0] if abs(p[0] - q[0]) < 0.5 else p[0], q[1] if abs(p[1] - q[1]) < 0.5 else p[1])
+        snapped.append(p)
+    pts = [p for i, p in enumerate(snapped) if i == 0 or p != snapped[i - 1]]
     for p, q in zip(pts, pts[1:]):
         if p[0] != q[0] and p[1] != q[1]:
             raise DiagramError(f"segment {p}->{q} is not horizontal or vertical; add a via point")
@@ -274,7 +314,7 @@ def shift(p, toward, d):
     return (p[0] + step, p[1])
 
 
-def draw_arrow(cv, pts, name):
+def draw_arrow(cv, pts, name, color=None):
     segs = list(zip(pts, pts[1:]))
     for i, ((x0, y0), (x1, y1)) in enumerate(segs):
         ts = ARROW_END_TRIM if i == 0 else 0
@@ -289,7 +329,11 @@ def draw_arrow(cv, pts, name):
             lo, hi = min(a, b), max(a, b)
             if lo <= hi:
                 cv.record("arrow", x0 - 1, lo, x0 + 1, hi, name)
-    return '<path d="M' + " L".join(f"{x},{y}" for x, y in pts) + '" class="arr" marker-end="url(#ah)"/>'
+    d = "M" + " L".join(f"{x},{y}" for x, y in pts)
+    if color:
+        return (f'<path d="{d}" fill="none" stroke="{color}" stroke-width="1.6" stroke-dasharray="6 4" '
+                f'marker-end="url(#ahc)"/>')
+    return f'<path d="{d}" class="arr" marker-end="url(#ah)"/>'
 
 
 # --- spec -> svg --------------------------------------------------------------
@@ -297,6 +341,8 @@ def draw_arrow(cv, pts, name):
 
 def render(spec, idx):
     cv = Canvas(idx)
+    cv.scale = float(spec.get("text_scale", 1.0))
+    cv.icon_size = spec.get("icon_size", 56)
     cw, ch = spec.get("cell", [200, 150])
     ox, oy = spec.get("origin", [100, 150])
     width, height = spec.get("canvas", [1600, 1000])
@@ -313,6 +359,12 @@ def render(spec, idx):
         svg, bbox, size = draw_node(cv, nid, n, cx, cy)
         geo[nid] = dict(cx=cx, cy=cy, size=size, bbox=bbox)
         node_svg.append(svg)
+
+    caption_svg = []
+    for c in spec.get("captions") or []:
+        cx, cy = px(c["at"])
+        svg, _ = text(cv, cx, cy, c["text"], c.get("cls", "ttl"), c.get("anchor", "start"))
+        caption_svg.append(svg)
 
     gbox = {}
 
@@ -348,7 +400,7 @@ def render(spec, idx):
     for gid in sorted(groups, key=lambda k: -(gbox[k][2] - gbox[k][0]) * (gbox[k][3] - gbox[k][1])):
         group_svg.append(draw_group(cv, gid, groups[gid], gbox[gid]))
 
-    arrow_svg = []
+    arrow_svg, support_svg, badge_svg = [], [], []
     for e in spec.get("edges") or []:
         if isinstance(e, list):
             e = dict(zip(("from", "to", "route"), e))
@@ -356,34 +408,54 @@ def render(spec, idx):
         if a not in geo or b not in geo:
             raise DiagramError(f"edge {a}->{b}: unknown node")
         for end in (a, b):
-            if nodes[end].get("support"):
+            if nodes[end].get("support") and e.get("kind") != "support":
                 raise DiagramError(f'edge {a}->{b}: "{end}" is a supporting service (support: true); '
-                                   f"house style rule 4 allows no arrows to it")
+                                   f"use kind: support (dashed, coloured) for its links")
         ga, gb = geo[a], geo[b]
         via = [px(p) for p in e.get("via", [])]
         if not via and ga["cx"] != gb["cx"] and ga["cy"] != gb["cy"]:
             via = [(gb["cx"], ga["cy"])] if e.get("route", "hv") == "hv" else [(ga["cx"], gb["cy"])]
         try:
-            pts = route([(ga["cx"], ga["cy"])] + via + [(gb["cx"], gb["cy"])])
+            so, eo = e.get("start_off", [0, 0]), e.get("end_off", [0, 0])
+            pts = route([(ga["cx"] + so[0], ga["cy"] + so[1])] + via + [(gb["cx"] + eo[0], gb["cy"] + eo[1])])
             pts[0] = shift(pts[0], pts[1], ga["size"] / 2 + GAP_START)
             pts[-1] = shift(pts[-1], pts[-2], gb["size"] / 2 + GAP_END)
         except DiagramError as err:
             raise DiagramError(f"edge {a}->{b}: {err}") from None
+        if e.get("kind") == "support":
+            support_svg.append(draw_arrow(cv, pts, f"{a}->{b}", e.get("color", "#DD344C")))
+            continue
         arrow_svg.append(draw_arrow(cv, pts, f"{a}->{b}"))
-
-    problems = find_overlaps(cv.items)
-    if problems:
-        raise DiagramError("overlap check failed (hint: label_pos, via, or move nodes):\n  " + "\n  ".join(problems))
+        if e.get("step") is not None:
+            legs = list(zip(pts, pts[1:]))
+            lens = [abs(q[0][0] - q[1][0]) + abs(q[0][1] - q[1][1]) for q in legs]
+            if "step_at" in e:
+                want, k = e["step_at"] * sum(lens), 0
+                while k < len(legs) - 1 and want > lens[k]:
+                    want, k = want - lens[k], k + 1
+                t = want / lens[k]
+            else:
+                k, t = lens.index(max(lens)), 0.5
+            (qx0, qy0), (qx1, qy1) = legs[k]
+            bx, by = qx0 + (qx1 - qx0) * t, qy0 + (qy1 - qy0) * t
+            cv.record("badge", bx - 12, by - 12, bx + 12, by + 12, f"step {e['step']} {a}->{b}")
+            badge_svg.append(f'<circle cx="{bx}" cy="{by}" r="12" fill="#fff" stroke="{LINE}" stroke-width="2"/>'
+                             f'<text x="{bx}" y="{by}" class="num" text-anchor="middle" dominant-baseline="central">{e["step"]}</text>')
 
     sub = "Prototype design. Not deployed."
     if spec.get("source"):
         sub += f' Source of truth: {spec["source"]}'
-    head = (f'<text x="48" y="58" class="h1">{escape(spec.get("title", "Architecture"))}</text>'
-            f'<text x="48" y="84" class="h2">{escape(spec.get("subtitle", sub))}</text>')
+    h1, _ = text(cv, 48, 58, spec.get("title", "Architecture"), "h1", "start")
+    h2, _ = text(cv, 48, 84, spec.get("subtitle", sub), "h2", "start")
+    head = h1 + h2
+
+    problems = find_overlaps(cv.items)
+    if problems:
+        raise DiagramError("overlap check failed (hint: label_pos, via, or move nodes):\n  " + "\n  ".join(problems))
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" '
-           f'height="{height}" font-family="Helvetica, Arial, sans-serif">{HEAD}'
+           f'height="{height}" font-family="Helvetica, Arial, sans-serif">{scaled_head(cv.scale)}'
            f'<rect width="{width}" height="{height}" fill="#fff"/>{head}'
-           + "".join(group_svg) + "".join(node_svg) + "".join(arrow_svg) + "</svg>")
+           + "".join(group_svg) + "".join(support_svg) + "".join(node_svg) + "".join(caption_svg) + "".join(arrow_svg) + "".join(badge_svg) + "</svg>")
     extent = union([i["box"] for i in cv.items]) if cv.items else (0, 0, 0, 0)
     if extent[2] > width or extent[3] > height or extent[0] < 0 or extent[1] < 0:
         raise DiagramError(f"content spills outside the {width}x{height} canvas {tuple(round(v) for v in extent)}; "
@@ -447,12 +519,12 @@ def selftest():
     except DiagramError:
         pass
     # layout without any icon file: user glyph + groups only
-    spec = dict(nodes={"u": dict(icon="user", at=[0, 0]), "v": dict(icon="user", at=[2, 0])},
+    spec = dict(origin=[100, 300], nodes={"u": dict(icon="user", at=[0, 0]), "v": dict(icon="user", at=[2, 0])},
                 edges=[["u", "v"]], groups={"g": dict(style="dashed", members=["u", "v"])})
     svg, stats = render(spec, {"service": {}, "resource": {}, "group": {}})
     assert stats == dict(nodes=2, edges=1, groups=1) and svg.startswith("<svg")
     # a label under a node that an arrow leaves downward must be reported
-    bad = dict(nodes={"u": dict(icon="user", at=[0, 0]), "v": dict(icon="user", at=[0, 2])}, edges=[["u", "v"]])
+    bad = dict(origin=[100, 300], nodes={"u": dict(icon="user", at=[0, 0]), "v": dict(icon="user", at=[0, 2])}, edges=[["u", "v"]])
     try:
         render(bad, {"service": {}, "resource": {}, "group": {}})
         raise SystemExit("selftest failed: arrow through a label not reported")
