@@ -14,7 +14,8 @@ nodes:
   s3_raw: {icon: bucket, label: [S3, raw documents], at: [5.0, 0.0], label_pos: above}
   sqs: {icon: sqs, label: [SQS, queue + DLQ], at: [6.0, 0.0], label_pos: above}
   fn_embed: {icon: lambda, label: [Lambda, embedder], at: [7.0, 0.0], label_pos: above}
-  rds: {icon: rds, label: [RDS, pgvector], at: [8.0, 1.0], label_pos: right}
+  rds: {icon: rds, label: [RDS, pgvector, single AZ], at: [8.0, 1.0], label_pos: right}
+  vpce: {icon: vpce, label: [VPC, endpoints], at: [8.94667, 1.47368], size: 48, label_pos: left, border: true}
   fn_query: {icon: lambda, label: [Lambda, query-api], at: [7.0, 2.0]}
   textract: {icon: textract, label: Textract, at: [9.46667, 0.0], label_pos: above}
   bedrock: {icon: bedrock, label: [Bedrock, embed + LLM], at: [9.46667, 1.0], label_pos: above}
@@ -36,7 +37,7 @@ edges:
   - {from: s3_raw, to: sqs, step: 3}
   - {from: sqs, to: fn_embed, step: 4, step_at: 0.3}
   - {from: fn_embed, to: textract, step: 5, step_at: 0.66}
-  - {from: fn_embed, to: bedrock, via: [[9.05333, 0.0], [9.05333, 1.0]], step: 6, step_at: 0.76}
+  - {from: fn_embed, to: bedrock, via: [[9.08, 0.0], [9.08, 1.0]], step: 6, step_at: 0.76}
   - {from: fn_embed, to: rds, step: 7}
   - {from: apigw, to: fn_query, via: [[3.5, 1.0], [3.5, 2.0]], step: 1}
   - {from: fn_query, to: bedrock, via: [[9.46667, 2.0]], step: 2, step_at: 0.8}
