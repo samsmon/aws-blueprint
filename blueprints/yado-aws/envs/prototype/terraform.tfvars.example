@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars (git-ignored) and adjust.
+region      = "ap-southeast-3"
+domain_name = "yado-demo.example.com"
+
+# Local emulator instead of a real AWS account:
+# use_emulator = true
+
+alarm_email = ""

@@ -1,0 +1,130 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # Finds Terraform blueprints (folders with envs/) touched by this change.
+  # A change to this workflow, or an unknown base commit, runs all of them.
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      blueprints: ${{ steps.set.outputs.blueprints }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: set
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          all=$(for d in blueprints/*/; do [ -d "${d}envs" ] && basename "$d"; done)
+
+          base="$PUSH_BEFORE"
+          [ "$EVENT" = "pull_request" ] && base="$PR_BASE"
+
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$base" 2>/dev/null; then
+            selected="$all"
+          else
+            files=$(git diff --name-only "$base" HEAD)
+            if echo "$files" | grep -q '^\.github/'; then
+              selected="$all"
+            else
+              selected=$(for b in $all; do
+                echo "$files" | grep -q "^blueprints/$b/" && echo "$b"
+              done)
+            fi
+          fi
+
+          json=$(printf '%s\n' $selected | jq -R . | jq -sc 'map(select(length > 0))')
+          echo "blueprints=$json" >> "$GITHUB_OUTPUT"
+          echo "Selected: $json"
+
+  validate:
+    needs: detect
+    if: ${{ needs.detect.outputs.blueprints != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        blueprint: ${{ fromJson(needs.detect.outputs.blueprints) }}
+    defaults:
+      run:
+        working-directory: blueprints/${{ matrix.blueprint }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+
+      - name: Format
+        run: terraform fmt -check -recursive
+
+      - name: Init (no backend)
+        working-directory: blueprints/${{ matrix.blueprint }}/envs/prototype
+        run: terraform init -backend=false
+
+      - name: Validate
+        working-directory: blueprints/${{ matrix.blueprint }}/envs/prototype
+        run: terraform validate
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: tflint
+        run: |
+          tflint --init
+          tflint --recursive
+
+  security:
+    needs: detect
+    if: ${{ needs.detect.outputs.blueprints != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        blueprint: ${{ fromJson(needs.detect.outputs.blueprints) }}
+    defaults:
+      run:
+        working-directory: blueprints/${{ matrix.blueprint }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Checkov
+        run: |
+          pip install checkov
+          checkov --config-file .checkov.yaml
+
+  cost:
+    # Estimates monthly cost from the Terraform code alone; nothing is deployed.
+    # Needs an INFRACOST_API_KEY repository secret (free key from infracost.io).
+    needs: detect
+    if: ${{ github.event_name == 'pull_request' && vars.INFRACOST_ENABLED == 'true' && needs.detect.outputs.blueprints != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        blueprint: ${{ fromJson(needs.detect.outputs.blueprints) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Estimate
+        run: infracost breakdown --path blueprints/${{ matrix.blueprint }}/envs/prototype --format table

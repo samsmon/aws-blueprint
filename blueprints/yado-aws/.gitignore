@@ -1,0 +1,26 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+*.tfplan
+override.tf
+override.tf.json
+
+# Secrets and local config
+.env
+*.pem
+*.key
+
+# Emulator data
+emulation/volume/
+
+# AWS icon pack: AWS's, not redistributed here. Only its README is tracked.
+assets/aws-icons/*
+!assets/aws-icons/README.md
+
+# Tooling
+.claude/
+.infracost/

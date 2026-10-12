@@ -1,0 +1,6 @@
+*.zip
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example

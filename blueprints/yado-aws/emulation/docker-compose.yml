@@ -1,0 +1,21 @@
+# Local AWS emulator used to rehearse `terraform apply` without an AWS account.
+#
+#   docker compose -f emulation/docker-compose.yml up -d
+#   cd envs/prototype && terraform apply -var use_emulator=true
+#
+# Emulators implement the AWS API surface, not the services themselves:
+# resources are created and stored, but no real Fargate task, Postgres engine
+# or load balancer runs behind them. Coverage depends on the emulator edition
+# and version, so check the vendor's current service list and licence terms
+# before relying on it; see docs/emulation.md for what was verified.
+services:
+  aws:
+    image: localstack/localstack:latest
+    container_name: yado-aws-emulator
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      SERVICES: acm,cloudwatch,ec2,ecr,ecs,elbv2,iam,logs,rds,route53,s3,secretsmanager,sns,sts
+      DEBUG: "0"
+    volumes:
+      - ./volume:/var/lib/localstack

@@ -1,0 +1,11 @@
+# Rename to backend.tf for a real deployment. State holds the generated
+# database role passwords, so the bucket must be encrypted and private.
+terraform {
+  backend "s3" {
+    bucket       = "REPLACE-with-state-bucket"
+    key          = "yado-aws/prototype/terraform.tfstate"
+    region       = "ap-southeast-3"
+    encrypt      = true
+    use_lockfile = true
+  }
+}

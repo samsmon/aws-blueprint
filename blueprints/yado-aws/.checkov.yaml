@@ -1,0 +1,46 @@
+# Checkov policy decisions for the prototype.
+#
+# The scan runs in CI. Anything listed under skip-check is a conscious
+# decision, explained here and in docs/security-scan.md, not a hidden failure.
+# Re-evaluate every entry before any real deployment.
+directory:
+  - .
+framework:
+  - terraform
+quiet: true
+compact: true
+
+skip-check:
+  # --- Cost: real money for a portfolio prototype, worth it in production ----
+  - CKV2_AWS_28  # WAF in front of the ALB (recurring monthly cost plus per-rule fees)
+  - CKV_AWS_157  # RDS Multi-AZ; one variable (db_multi_az) turns it on
+  - CKV_AWS_118  # RDS enhanced monitoring
+  - CKV_AWS_353  # RDS Performance Insights
+  - CKV_AWS_136  # ECR KMS CMK; AES256 encryption is on
+  - CKV_AWS_158  # CloudWatch log group KMS CMK; encrypted with the service key
+  - CKV_AWS_149  # Secrets Manager KMS CMK; encrypted with the AWS-managed key
+  - CKV_AWS_145  # S3 KMS default encryption; SSE-S3 (AES256) is on
+  - CKV_AWS_144  # S3 cross-region replication
+  - CKV_AWS_18   # S3 access logging
+  - CKV2_AWS_62  # S3 event notifications
+  - CKV_AWS_91   # ALB access logs (needs a log bucket and policy)
+  - CKV2_AWS_38  # Route 53 DNSSEC
+  - CKV2_AWS_39  # Route 53 query logging
+
+  # --- Controlled by a variable, deliberately off so terraform destroy works --
+  - CKV_AWS_150  # ALB deletion protection (var.deletion_protection)
+  - CKV_AWS_293  # RDS deletion protection (var.deletion_protection)
+
+  # --- Intentional design choices ------------------------------------------
+  - CKV_AWS_260  # Port 80 open to the world: it only redirects to HTTPS
+  - CKV_AWS_378  # ALB to task traffic is HTTP inside the VPC; TLS ends at the ALB
+  - CKV_AWS_333  # Tasks get public IPs because there is no NAT gateway; they
+                 # accept traffic only from the ALB security group
+  - CKV_AWS_161  # RDS IAM auth; the Laravel apps use password auth with
+                 # per-service roles and force_ssl
+  - CKV2_AWS_57  # Secret rotation: DB credentials are generated, not rotated,
+                 # in the prototype. The RDS master secret is managed by RDS.
+  - CKV_AWS_26   # SNS encryption: the AWS-managed SNS key blocks CloudWatch
+                 # alarm delivery; a CMK with a key policy is the production fix
+  - CKV2_AWS_5   # Reported for groups attached through module outputs; the
+                 # groups are attached (see modules/ecs-service and modules/rds)
