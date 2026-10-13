@@ -70,9 +70,9 @@ Endpoints, represented by the single icon on the VPC border:
 | Bedrock runtime | Interface | Embedder, `query-api` |
 | Textract | Interface | Embedder |
 | Secrets Manager | Interface | Embedder, `query-api` |
-| CloudWatch Logs | Interface | Embedder, `query-api` |
 | KMS | Interface | Only if code calls KMS directly, which is not expected |
 
+CloudWatch Logs needs no endpoint: Lambda delivers each function's logs from outside the VPC. An endpoint is only needed if code calls the Logs API itself. The interface endpoints bill per hour per AZ, so the count and the AZs they sit in are a cost driver (see [cost.md](cost.md)).
 Security groups, one per role:
 
 | Group | Inbound | Outbound |
@@ -118,5 +118,6 @@ Encryption and exposure:
 ## Open design points
 
 - **Multi-page scans.** The synchronous Textract call suits single images and short documents. A multi-page scanned PDF needs the asynchronous API, which reads the object from S3 and returns results later. The embedder can poll inside its timeout for small files; larger ones need a second step, either Step Functions or a Lambda triggered when the job finishes. Not decided.
+- **Database credential.** A Secrets Manager secret needs an interface endpoint. IAM database authentication would drop both the secret and that endpoint, at the price of a different connection path. Not decided; the saving is in [cost.md](cost.md).
 - **Database connections.** Lambda concurrency can exhaust RDS connections. At prototype volume the embedder concurrency cap keeps this safe; RDS Proxy is the production answer.
 - **Cold starts.** Lambdas in a VPC have the same cold start as others today, but the embedder's package (database driver, PDF and text libraries) is large. Layer or container image is open.

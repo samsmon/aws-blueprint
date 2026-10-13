@@ -6,7 +6,7 @@ Guidance for AI agents working in this repo.
 
 Central collection of AWS implementation blueprints by samsmon. Each blueprint is a design for running some workload on AWS: architecture, Terraform, cost estimate, and trade-offs.
 
-This repo is planning only. Nothing here is deployed. There is no AWS account behind it and no real billing. Cost figures are estimates from AWS Pricing Calculator or Infracost, never actual spend. Expensive services (RDS, ALB, NAT) are the reason it stays blueprint-only.
+This repo is planning only. Nothing here is deployed. There is no AWS account behind it and no real billing. Cost figures are estimates from AWS Pricing Calculator, Infracost or `tools/pricing`, never actual spend. Expensive services (RDS, ALB, NAT) are the reason it stays blueprint-only.
 
 ## Hard rules
 
@@ -22,6 +22,7 @@ blueprints/<slug>/   one folder per blueprint, kebab-case slug
 _template/           copy this to start a new blueprint
 docs/                repo-level conventions (if any)
 tools/diagram/       renders architecture diagrams from a YAML spec
+tools/pricing/       AWS Price List into a local SQLite database, for cost docs
 ```
 
 A blueprint folder:
@@ -48,7 +49,8 @@ Status values: `idea`, `drafted`, `reviewed`.
 
 ## Conventions
 
-- Default region for estimates: `ap-southeast-3` (Jakarta). State it if different.
+- Default region for estimates: `ap-southeast-3` (Jakarta). State it if different (`rag-aws` uses `ap-southeast-1`, because Jakarta lacks Textract and an embedding model).
+- Cost docs take prices from `tools/pricing`, state the region and assumptions, name what is left out, and keep the calculation in the blueprint (see `blueprints/rag-aws/cost/estimate.py`) so it can be re-run. Free tiers are not applied unless stated.
 - Diagrams: Mermaid in markdown, or generated SVG (see `blueprints/yado-aws/diagrams/`).
 - Write down trade-offs and prototype shortcuts (no NAT, single-AZ, local state) in `docs/decisions.md`. Say what production would change.
 - Keep each blueprint self-contained. Do not import modules across blueprints. Copy instead.

@@ -11,7 +11,7 @@ Agents: read [AGENTS.md](AGENTS.md) first.
 | Slug | Status | Tags | Summary |
 |------|--------|------|---------|
 | [yado-aws](blueprints/yado-aws/) | drafted | ecs, fargate, rds, terraform | Yado homelab services (launcher, SSO, shared PostgreSQL) on ECS Fargate behind an ALB |
-| [rag-aws](blueprints/rag-aws/) | idea | rag, bedrock, lambda, pgvector, serverless | The rag-kb knowledge base on AWS: S3 ingest, Lambda APIs, RDS pgvector, Bedrock answers |
+| [rag-aws](blueprints/rag-aws/) | drafted | rag, bedrock, lambda, pgvector, serverless | The rag-kb knowledge base on AWS: S3 ingest, Lambda APIs, RDS pgvector, Bedrock answers |
 
 Status: `idea`, `drafted`, `reviewed`.
 

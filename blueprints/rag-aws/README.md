@@ -1,17 +1,17 @@
 ---
 title: rag-kb on AWS
 slug: rag-aws
-status: idea
+status: drafted
 tags: [rag, bedrock, lambda, pgvector, serverless]
 created: 2026-10-12
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 # rag-kb on AWS
 
 An AWS design for a personal RAG knowledge base: upload documents to S3, embed them automatically, and ask questions through a chat page backed by Bedrock.
 
-> **Status: idea.** Design only. It has not been deployed and there is no AWS account behind it. No cost estimate exists yet, and every cost figure added later will be an estimate, never a bill. The one real part is `rag-kb`, which runs on my own homelab; this blueprint shows how I would move it to AWS.
+> **Status: drafted.** Design only. It has not been deployed and there is no AWS account behind it. Cost figures in [docs/cost.md](docs/cost.md) are estimates from list prices, never a bill. The one real part is `rag-kb`, which runs on my own homelab; this blueprint shows how I would move it to AWS.
 
 ## What is real and what is not
 
@@ -82,7 +82,7 @@ Dashed links on the diagram: red is security, pink is operations.
 
 ### Network
 
-The embedder, `query-api` and RDS sit in private subnets across two AZs. There is no NAT gateway, so the VPC endpoint icon on the VPC border stands for the endpoints that let them reach S3, Bedrock, Textract, Secrets Manager and CloudWatch Logs. Interface endpoints are billed per hour, which will be one of the cost drivers. `ingest-api` stays outside the VPC because it only signs URLs.
+The embedder, `query-api` and RDS sit in private subnets across two AZs. There is no NAT gateway, so the VPC endpoint icon on the VPC border stands for the endpoints that let them reach S3, Bedrock, Textract and Secrets Manager. Interface endpoints are billed per hour, which will be one of the cost drivers. `ingest-api` stays outside the VPC because it only signs URLs.
 
 RDS is single-AZ in the prototype, as the diagram says. A production design would turn on Multi-AZ.
 
@@ -101,13 +101,13 @@ RDS is single-AZ in the prototype, as the diagram says. A production design woul
 
 1. **Region and models.** The repo default `ap-southeast-3` (Jakarta) has no Textract and no embedding model. [docs/decisions.md](docs/decisions.md) (D8 to D10) proposes Singapore with Cohere Embed Multilingual v3 and a Claude model through global cross-Region inference. These come from AWS documentation, which can be incomplete or out of date, so confirm them in the Bedrock console.
 2. **Embedding model.** Vectors from different models are not comparable, so moving over means re-embedding the whole corpus. The `rag-kb` eval set can measure the change against its 0.96 baseline (D9).
-3. **Cost.** To be written as `docs/cost.md`, with the region, request volume and corpus size stated. The main drivers expected are RDS, the interface endpoints, and Bedrock tokens.
+3. **Cost.** [docs/cost.md](docs/cost.md) estimates about 91 USD a month for light use with Claude Sonnet 5.5, or about 63 USD with Claude Haiku 5.5, of which about 59 USD is fixed (RDS, endpoints, WAF). The Singapore price file lists a Titan embedding price that the availability table does not support; confirm in the console.
 
 ## Docs
 
 - [docs/decisions.md](docs/decisions.md): trade-offs and what production would change.
 - [docs/architecture.md](docs/architecture.md): components, data model, networking, security, observability.
-- `docs/cost.md` (to write): estimate with assumptions and levers.
+- [docs/cost.md](docs/cost.md): estimate with assumptions, cost drivers and levers; [cost/estimate.py](cost/estimate.py) recomputes it from the AWS Price List.
 
 ## Related
 

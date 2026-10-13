@@ -11,9 +11,9 @@ Trade-off: More code to own and no managed sync. In return the vector store matc
 Production: Reconsider Knowledge Bases if the team wants less code more than control over chunking.
 
 ## D2: VPC endpoints instead of a NAT gateway
-Context: The embedder and `query-api` run in private subnets next to RDS. They must reach S3, Bedrock, Textract, Secrets Manager and CloudWatch Logs. SQS needs no endpoint because the Lambda event source mapping polls the queue from outside the VPC.
+Context: The embedder and `query-api` run in private subnets next to RDS. They must reach S3, Bedrock, Textract and Secrets Manager. SQS needs no endpoint because the Lambda event source mapping polls the queue from outside the VPC, and Lambda delivers its logs to CloudWatch Logs from outside the VPC too.
 Decision: A gateway endpoint for S3 and interface endpoints for the rest. No NAT gateway and no internet route from the private subnets.
-Trade-off: Each interface endpoint is billed per hour per AZ, so the endpoint count is a cost driver (counted in `cost.md`). The Lambdas cannot call anything outside AWS, which also rules out calling the Voyage API from the cloud.
+Trade-off: Each interface endpoint is billed per hour per AZ. Three interface endpoints in one AZ cost about 28 USD a month and in two AZs about 57, against about 43 for one NAT gateway ([cost.md](cost.md)), so endpoints are not cheaper than NAT here. They are chosen because the private subnets then have no route to the internet. The Lambdas cannot call anything outside AWS, which also rules out calling the Voyage API from the cloud.
 Production: A NAT gateway or an egress proxy if a Lambda has to call an external API.
 
 ## D3: `ingest-api` runs outside the VPC
@@ -56,6 +56,8 @@ Context: The repo default is `ap-southeast-3` (Jakarta), which is closest to me.
 | Cohere Embed Multilingual v3 (knowledge base model list) | Not listed | Listed | Listed |
 | Claude models | Global cross-Region inference only | Global cross-Region inference only | Not checked |
 
+Note: the Singapore price file lists a Titan Text Embeddings V2 price, which disagrees with the availability table above ([cost.md](cost.md)). Confirm in the console.
+
 Decision: Use Singapore. It is the nearest region with Textract and a multilingual embedding model. Mumbai is the fallback, because it has both Titan V2 and Cohere. Estimates in `cost.md` state the region they assume.
 Trade-off: Higher latency than Jakarta and no single-Region option for Claude. The Cohere row comes from the knowledge base page, not the runtime page, so it is the first thing to confirm.
 Production: Pick the region that holds the data's residency requirements, then check models again.
@@ -76,7 +78,7 @@ Production: Decide per data classification, and use a geographic profile if data
 - Authentication. There is no login, so the API would be open behind WAF rate limits. A real deployment adds Cognito and an authorizer.
 - Chunk size and overlap. They should start from the `rag-kb` settings and be tuned with the eval set.
 - Which Bedrock quotas apply to the account, and whether the embedder concurrency cap in D5 needs to be lower.
-- Bedrock pricing assumptions for `cost.md`, which depend on D8 to D10.
+- Whether Secrets Manager or IAM database authentication supplies the database credential (see architecture.md and cost.md).
 - How multi-page scanned PDFs are OCRed: the synchronous Textract call suits short documents, and long ones need the asynchronous API and a second step (see architecture.md, open design points).
 
 ## Sources
