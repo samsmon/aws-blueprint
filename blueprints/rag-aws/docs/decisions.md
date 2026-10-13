@@ -11,7 +11,7 @@ Trade-off: More code to own and no managed sync. In return the vector store matc
 Production: Reconsider Knowledge Bases if the team wants less code more than control over chunking.
 
 ## D2: VPC endpoints instead of a NAT gateway
-Context: The embedder and `query-api` run in private subnets next to RDS. They must reach S3, Bedrock, Textract, SQS, Secrets Manager and CloudWatch Logs.
+Context: The embedder and `query-api` run in private subnets next to RDS. They must reach S3, Bedrock, Textract, Secrets Manager and CloudWatch Logs. SQS needs no endpoint because the Lambda event source mapping polls the queue from outside the VPC.
 Decision: A gateway endpoint for S3 and interface endpoints for the rest. No NAT gateway and no internet route from the private subnets.
 Trade-off: Each interface endpoint is billed per hour per AZ, so the endpoint count is a cost driver (counted in `cost.md`). The Lambdas cannot call anything outside AWS, which also rules out calling the Voyage API from the cloud.
 Production: A NAT gateway or an egress proxy if a Lambda has to call an external API.
@@ -77,6 +77,7 @@ Production: Decide per data classification, and use a geographic profile if data
 - Chunk size and overlap. They should start from the `rag-kb` settings and be tuned with the eval set.
 - Which Bedrock quotas apply to the account, and whether the embedder concurrency cap in D5 needs to be lower.
 - Bedrock pricing assumptions for `cost.md`, which depend on D8 to D10.
+- How multi-page scanned PDFs are OCRed: the synchronous Textract call suits short documents, and long ones need the asynchronous API and a second step (see architecture.md, open design points).
 
 ## Sources
 - [Bedrock regional availability](https://docs.aws.amazon.com/bedrock/latest/userguide/models-region-compatibility.html), page text was truncated after part of the Anthropic section.

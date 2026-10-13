@@ -82,7 +82,7 @@ Dashed links on the diagram: red is security, pink is operations.
 
 ### Network
 
-The embedder, `query-api` and RDS sit in private subnets across two AZs. There is no NAT gateway, so the VPC endpoint icon on the VPC border stands for the endpoints that let them reach S3, Bedrock, Textract, SQS, Secrets Manager and CloudWatch Logs. Interface endpoints are billed per hour, which will be one of the cost drivers. `ingest-api` stays outside the VPC because it only signs URLs.
+The embedder, `query-api` and RDS sit in private subnets across two AZs. There is no NAT gateway, so the VPC endpoint icon on the VPC border stands for the endpoints that let them reach S3, Bedrock, Textract, Secrets Manager and CloudWatch Logs. Interface endpoints are billed per hour, which will be one of the cost drivers. `ingest-api` stays outside the VPC because it only signs URLs.
 
 RDS is single-AZ in the prototype, as the diagram says. A production design would turn on Multi-AZ.
 
@@ -106,7 +106,7 @@ RDS is single-AZ in the prototype, as the diagram says. A production design woul
 ## Docs
 
 - [docs/decisions.md](docs/decisions.md): trade-offs and what production would change.
-- `docs/architecture.md` (to write): components, networking, security, observability.
+- [docs/architecture.md](docs/architecture.md): components, data model, networking, security, observability.
 - `docs/cost.md` (to write): estimate with assumptions and levers.
 
 ## Related
