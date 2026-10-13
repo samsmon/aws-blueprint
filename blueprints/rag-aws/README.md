@@ -91,7 +91,7 @@ RDS is single-AZ in the prototype, as the diagram says. A production design woul
 | `rag-kb` today | On AWS |
 |---|---|
 | Postgres + pgvector on the homelab | RDS PostgreSQL with pgvector |
-| Voyage `voyage-4`, 1024 dimensions | A Bedrock embedding model, still to be chosen |
+| Voyage `voyage-4`, 1024 dimensions | A Bedrock embedding model, Cohere Embed Multilingual v3 proposed (D9) |
 | Tesseract OCR | Textract |
 | `kb` CLI, run on demand, no daemon | `ingest-api` and `query-api`, event-driven ingest |
 | Reached over Tailscale | CloudFront and API Gateway |
@@ -99,15 +99,15 @@ RDS is single-AZ in the prototype, as the diagram says. A production design woul
 
 ## Open questions
 
-1. **Region and models.** The repo default is `ap-southeast-3` (Jakarta). AWS documentation lists Titan Text Embeddings V2 in several Asian regions but not in Jakarta ([regional availability](https://docs.aws.eu/bedrock/latest/userguide/models-region-compatibility.html)). That page may be incomplete or outdated, so confirm in the Bedrock console. The generation model has not been checked at all.
-2. **Embedding model.** Titan Text Embeddings V2 offers 1024, 512 and 256 dimensions ([model guide](https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html)), so a 1024-wide column still fits. Vectors from different models are not comparable, so moving over means re-embedding the whole corpus. The `rag-kb` eval set can measure the change against its 0.96 baseline.
+1. **Region and models.** The repo default `ap-southeast-3` (Jakarta) has no Textract and no embedding model. [docs/decisions.md](docs/decisions.md) (D8 to D10) proposes Singapore with Cohere Embed Multilingual v3 and a Claude model through global cross-Region inference. These come from AWS documentation, which can be incomplete or out of date, so confirm them in the Bedrock console.
+2. **Embedding model.** Vectors from different models are not comparable, so moving over means re-embedding the whole corpus. The `rag-kb` eval set can measure the change against its 0.96 baseline (D9).
 3. **Cost.** To be written as `docs/cost.md`, with the region, request volume and corpus size stated. The main drivers expected are RDS, the interface endpoints, and Bedrock tokens.
 
-## Docs to write
+## Docs
 
-- `docs/architecture.md`: components, networking, security, observability.
-- `docs/cost.md`: estimate with assumptions and levers.
-- `docs/decisions.md`: why a custom pipeline instead of Knowledge Bases, why VPC endpoints instead of NAT, why `ingest-api` is outside the VPC, why RDS is single-AZ here.
+- [docs/decisions.md](docs/decisions.md): trade-offs and what production would change.
+- `docs/architecture.md` (to write): components, networking, security, observability.
+- `docs/cost.md` (to write): estimate with assumptions and levers.
 
 ## Related
 

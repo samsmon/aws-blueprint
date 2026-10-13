@@ -67,4 +67,4 @@ Aliases: s3, sqs, sns, apigw, kms, secrets, acm, route53, ecr, iam, alb, igw, vp
 | 12 | Nothing overlaps: text, icon, arrow, border keep clear space; the render fails otherwise | tool |
 
 Text widths use a per-character Arial estimate (+10%), calibrated against a real browser; the header is checked too. After `OK`, still open the SVG in a browser at full size and walk it.
-A RAG-style design has two data paths (ingest and query): draw both as arrows, never arrows to support services.
+A RAG-style design has two data paths (ingest and query): draw both as solid arrows, and link support services with dashed `kind: support` edges.
