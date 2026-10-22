@@ -23,6 +23,7 @@ import yaml
 
 HERE = Path(__file__).resolve().parent
 INDEX_FILE = HERE / ".icon-index.json"
+INDEX_VERSION = 2   # bump when build_index changes, so old caches rebuild
 
 INK, SUB, LINE = "#16191F", "#5F6B7A", "#232F3E"
 HEAD = (f'<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" '
@@ -81,6 +82,7 @@ STYLES = {
     "public": ("#7AA116", "#F6FAEC", "Public-subnet", False),
     "private": ("#00A4A6", "#F0FAFA", "Private-subnet", False),
     "dashed": ("#8A97A8", "#F7F8FA", None, True),
+    "corporate": ("#7D8998", "#fff", "Corporate-data-center", False),
 }
 
 # short name -> query. A "res:" prefix selects the resource icon set.
@@ -122,17 +124,20 @@ def find_pack():
 def build_index(pack):
     if INDEX_FILE.exists():
         data = json.loads(INDEX_FILE.read_text("utf-8"))
-        if data.get("pack") == str(pack):
+        if data.get("pack") == str(pack) and data.get("v") == INDEX_VERSION:
             return data["icons"]
     idx = {"service": {}, "resource": {}, "group": {}}
     for f in pack.glob("Architecture-Service-Icons_*/Arch_*/64/Arch_*_64.svg"):
         idx["service"][f.stem[len("Arch_"):-len("_64")]] = str(f)
     for f in pack.glob("Resource-Icons_*/Res_*/Res_*_48.svg"):
         idx["resource"][f.stem[len("Res_"):-len("_48")]] = str(f)
+    # general icons (server, users, documents) sit one level deeper, light variant only
+    for f in pack.glob("Resource-Icons_*/Res_General-Icons/Res_48_Light/Res_*_48_Light.svg"):
+        idx["resource"][f.stem[len("Res_"):-len("_48_Light")]] = str(f)
     for f in pack.glob("Architecture-Group-Icons_*/*_32.svg"):
         idx["group"][f.stem[:-len("_32")]] = str(f)
     try:
-        INDEX_FILE.write_text(json.dumps({"pack": str(pack), "icons": idx}), "utf-8")
+        INDEX_FILE.write_text(json.dumps({"pack": str(pack), "v": INDEX_VERSION, "icons": idx}), "utf-8")
     except OSError:
         pass
     return idx

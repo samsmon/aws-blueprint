@@ -41,12 +41,12 @@ groups:
   vpc: {title: VPC, style: vpc, members: [fn, db]}   # members: node ids or group ids; box is computed
 ```
 
-Node keys: `icon` (alias, service name, `res:<resource>`, or `user`), `label` (string, or list: bold line then
+Node keys: `icon` (alias, service name, `res:<resource>` incl. general icons such as `res:server`, `res:servers`, `res:users`, `res:documents`, or `user`), `label` (string, or list: bold line then
 sub lines), `at`, `label_pos` (below, above, right, left), `size` (default 56), `border: true` (icon sits on a
 group border; gets a white patch), `support: true` (supporting service: arrows to it must be `kind: support`).
 Edge keys: `via`, `step`, `step_at`, `kind: support` (dashed, thin, drawn under the icons), `color` (AWS category: security `#DD344C`, operations `#E7157B`), `start_off`/`end_off` `[dx, dy]` px shift of the end points (stagger several drops onto one icon).
 Captions (free text, e.g. a path title): `captions: [{text: Ingest path, at: [4, -0.5]}]` (`cls` ttl|lbl|sub, `anchor` start|middle|end).
-Group keys: `title`, `style` (cloud, region, vpc, public, private, dashed), `members`, `pad` (28),
+Group keys: `title`, `style` (cloud, region, vpc, public, private, dashed, corporate = on-premises data center), `members`, `pad` (28),
 `grow: [left, top, right, bottom]` px to align sibling groups.
 Aliases: s3, sqs, sns, apigw, kms, secrets, acm, route53, ecr, iam, alb, igw, vpce, bucket, queue, function.
 
